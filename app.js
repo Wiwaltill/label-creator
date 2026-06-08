@@ -1,22 +1,22 @@
 const $ = (id) => document.getElementById(id);
 
 let switchRows = [
-  { port: 1, vlan: '10', label: 'Mgmt', mode: 'Untagged', color: '#93c5fd' },
-  { port: 2, vlan: '10', label: 'Mgmt', mode: 'Untagged', color: '#93c5fd' },
-  { port: 3, vlan: '20', label: 'Audio', mode: 'Untagged', color: '#86efac' },
-  { port: 4, vlan: '20', label: 'Audio', mode: 'Untagged', color: '#86efac' },
-  { port: 5, vlan: '30', label: 'Licht', mode: 'Untagged', color: '#fde68a' },
-  { port: 6, vlan: '30', label: 'Licht', mode: 'Untagged', color: '#fde68a' },
-  { port: 7, vlan: '40', label: 'Video', mode: 'Untagged', color: '#fca5a5' },
-  { port: 8, vlan: '99', label: 'Trunk', mode: 'Tagged', color: '#c4b5fd' },
-  { port: 9, vlan: '99', label: 'Trunk', mode: 'Tagged', color: '#c4b5fd' },
-  { port: 10, vlan: '50', label: 'Gast', mode: 'Untagged', color: '#a7f3d0' },
-  { port: 11, vlan: '50', label: 'Gast', mode: 'Untagged', color: '#a7f3d0' },
-  { port: 12, vlan: '60', label: 'Office', mode: 'Untagged', color: '#bfdbfe' },
-  { port: 13, vlan: '70', label: 'Spare', mode: '', color: '#e5e7eb' },
-  { port: 14, vlan: '70', label: 'Spare', mode: '', color: '#e5e7eb' },
-  { port: 15, vlan: '80', label: 'AP', mode: 'Tagged', color: '#ddd6fe' },
-  { port: 16, vlan: '80', label: 'AP', mode: 'Tagged', color: '#ddd6fe' },
+  { port: 1, untagged: '10', tagged: '20', label: 'Uplink / Trunk', color: '#c4b5fd' },
+  { port: 2, untagged: '10', tagged: '', label: 'Mgmt', color: '#93c5fd' },
+  { port: 3, untagged: '20', tagged: '', label: 'Audio', color: '#86efac' },
+  { port: 4, untagged: '20', tagged: '', label: 'Audio', color: '#86efac' },
+  { port: 5, untagged: '30', tagged: '', label: 'Licht', color: '#fde68a' },
+  { port: 6, untagged: '30', tagged: '', label: 'Licht', color: '#fde68a' },
+  { port: 7, untagged: '40', tagged: '', label: 'Video', color: '#fca5a5' },
+  { port: 8, untagged: '10', tagged: '20,30,40', label: 'Trunk', color: '#ddd6fe' },
+  { port: 9, untagged: '10', tagged: '20', label: 'AP', color: '#bfdbfe' },
+  { port: 10, untagged: '50', tagged: '', label: 'Gast', color: '#a7f3d0' },
+  { port: 11, untagged: '50', tagged: '', label: 'Gast', color: '#a7f3d0' },
+  { port: 12, untagged: '60', tagged: '', label: 'Office', color: '#bfdbfe' },
+  { port: 13, untagged: '', tagged: '', label: 'Spare', color: '#e5e7eb' },
+  { port: 14, untagged: '', tagged: '', label: 'Spare', color: '#e5e7eb' },
+  { port: 15, untagged: '10', tagged: '80', label: 'AP', color: '#ddd6fe' },
+  { port: 16, untagged: '10', tagged: '80', label: 'AP', color: '#ddd6fe' },
 ];
 
 let rackRows = Array.from({ length: 12 }, (_, i) => ({
@@ -34,17 +34,33 @@ function bindInputs(ids) {
   ids.forEach(id => $(id).addEventListener('input', renderAll));
 }
 
+function normalizeSwitchRow(row) {
+  // Backwards compatibility for old CSVs: vlan+mode becomes untagged/tagged.
+  if (row.untagged === undefined && row.tagged === undefined) {
+    const mode = String(row.mode || '').toLowerCase();
+    row.untagged = mode.includes('tag') && !mode.includes('untag') ? '' : (row.vlan || '');
+    row.tagged = mode.includes('tag') && !mode.includes('untag') ? (row.vlan || '') : '';
+  }
+  return {
+    port: Number(row.port) || '',
+    untagged: row.untagged ?? '',
+    tagged: row.tagged ?? '',
+    label: row.label ?? '',
+    color: row.color || '#ffffff'
+  };
+}
+
 function renderSwitchTable() {
   const table = $('switchTable');
-  table.innerHTML = `<thead><tr><th>Port</th><th>VLAN</th><th>Label</th><th>Mode</th><th>Farbe</th><th></th></tr></thead><tbody></tbody>`;
+  table.innerHTML = `<thead><tr><th>Port</th><th>Untagged / PVID</th><th>Tagged VLANs</th><th>Label</th><th>Farbe</th><th></th></tr></thead><tbody></tbody>`;
   const tbody = table.querySelector('tbody');
   switchRows.forEach((row, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><input type="number" value="${escapeHtml(row.port)}" data-i="${idx}" data-k="port"></td>
-      <td><input value="${escapeHtml(row.vlan)}" data-i="${idx}" data-k="vlan"></td>
+      <td><input placeholder="z. B. 10" value="${escapeHtml(row.untagged)}" data-i="${idx}" data-k="untagged"></td>
+      <td><input placeholder="z. B. 20,30" value="${escapeHtml(row.tagged)}" data-i="${idx}" data-k="tagged"></td>
       <td><input value="${escapeHtml(row.label)}" data-i="${idx}" data-k="label"></td>
-      <td><input value="${escapeHtml(row.mode)}" data-i="${idx}" data-k="mode"></td>
       <td><input type="color" value="${escapeHtml(row.color)}" data-i="${idx}" data-k="color"></td>
       <td><button class="remove" data-remove-switch="${idx}">×</button></td>`;
     tbody.appendChild(tr);
@@ -88,31 +104,48 @@ function onTableInput(e) {
 
 function syncCounts() {
   const swCount = Number($('switchPortCount').value);
-  while (switchRows.length < swCount) switchRows.push({ port: switchRows.length + 1, vlan: '', label: '', mode: '', color: '#ffffff' });
+  while (switchRows.length < swCount) switchRows.push({ port: switchRows.length + 1, untagged: '', tagged: '', label: '', color: '#ffffff' });
   while (switchRows.length > swCount) switchRows.pop();
+  switchRows = switchRows.map(normalizeSwitchRow);
   const rackCount = Number($('rackPortCount').value);
   while (rackRows.length < rackCount) rackRows.push({ port: rackRows.length + 1, top: '', bottom: '', color: '#ffffff' });
   while (rackRows.length > rackCount) rackRows.pop();
+}
+
+function portSummary(r) {
+  const parts = [];
+  if (r.untagged) parts.push(`U:${r.untagged}`);
+  if (r.tagged) parts.push(`T:${r.tagged}`);
+  return parts.join('  ');
 }
 
 function renderSwitchPreview() {
   const width = Number($('switchWidth').value);
   const portHeight = Number($('switchPortHeight').value);
   const perRow = Number($('switchPortsPerRow').value);
-  const uniqueVlans = [...new Map(switchRows.map(r => [`${r.vlan}|${r.label}|${r.color}`, r])).values()];
+  const uniqueVlans = new Map();
+  switchRows.forEach(r => {
+    if (r.untagged) uniqueVlans.set(`U-${r.untagged}-${r.color}`, { type: 'Untagged/PVID', vlan: r.untagged, color: r.color });
+    String(r.tagged || '').split(/[;,\s]+/).filter(Boolean).forEach(v => uniqueVlans.set(`T-${v}-${r.color}`, { type: 'Tagged', vlan: v, color: r.color }));
+  });
   $('switchPreview').innerHTML = `
     <div class="preview-title">${escapeHtml($('switchName').value)}</div>
     <div class="switch-label" style="width:${width}mm">
       <div class="switch-grid" style="grid-template-columns: repeat(${perRow}, 1fr)">
         ${switchRows.map(r => `
           <div class="port-box" style="height:${portHeight}mm;background:${escapeHtml(r.color)}">
-            <div class="port-head"><span>${escapeHtml(r.port)}</span><span>VLAN ${escapeHtml(r.vlan)}</span></div>
+            <div class="port-head"><span>${escapeHtml(r.port)}</span><span>${escapeHtml(portSummary(r))}</span></div>
             <div class="port-label">${escapeHtml(r.label)}</div>
-            <div class="port-mode">${escapeHtml(r.mode)}</div>
+            <div class="port-vlans">
+              ${r.untagged ? `<span class="vlan-pill">Untagged ${escapeHtml(r.untagged)}</span>` : ''}
+              ${r.tagged ? `<span class="vlan-pill tagged">Tagged ${escapeHtml(r.tagged)}</span>` : ''}
+            </div>
           </div>`).join('')}
       </div>
       <div class="legend">
-        ${uniqueVlans.filter(r => r.vlan || r.label).map(r => `<span class="legend-item"><span class="swatch" style="background:${escapeHtml(r.color)}"></span>VLAN ${escapeHtml(r.vlan)} · ${escapeHtml(r.label)}</span>`).join('')}
+        <span class="legend-item"><strong>U</strong> = Untagged/PVID</span>
+        <span class="legend-item"><strong>T</strong> = Tagged VLANs</span>
+        ${[...uniqueVlans.values()].map(r => `<span class="legend-item"><span class="swatch" style="background:${escapeHtml(r.color)}"></span>${escapeHtml(r.type)} VLAN ${escapeHtml(r.vlan)}</span>`).join('')}
       </div>
     </div>
     <div class="cut-hint">Maßhaltig drucken: Im Druckdialog Skalierung auf 100% / tatsächliche Größe stellen.</div>`;
@@ -169,7 +202,7 @@ function importCsv(file, target) {
   reader.onload = () => {
     const rows = parseCsv(reader.result);
     if (target === 'switch') {
-      switchRows = rows.map(r => ({ port: Number(r.port), vlan: r.vlan, label: r.label, mode: r.mode, color: r.color || '#ffffff' }));
+      switchRows = rows.map(normalizeSwitchRow);
       $('switchPortCount').value = switchRows.length;
     } else {
       rackRows = rows.map(r => ({ port: Number(r.port), top: r.top, bottom: r.bottom, color: r.color || '#ffffff' }));
@@ -183,11 +216,11 @@ function importCsv(file, target) {
 document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setView(tab.dataset.view)));
 bindInputs(['switchName', 'switchPortCount', 'switchPortsPerRow', 'switchWidth', 'switchPortHeight', 'rackName', 'rackPortCount', 'rackWidth', 'rackHeight', 'rackFontSize']);
 $('printBtn').addEventListener('click', () => window.print());
-$('addSwitchRow').addEventListener('click', () => { switchRows.push({ port: switchRows.length + 1, vlan: '', label: '', mode: '', color: '#ffffff' }); $('switchPortCount').value = switchRows.length; renderAll(); });
+$('addSwitchRow').addEventListener('click', () => { switchRows.push({ port: switchRows.length + 1, untagged: '', tagged: '', label: '', color: '#ffffff' }); $('switchPortCount').value = switchRows.length; renderAll(); });
 $('addRackRow').addEventListener('click', () => { rackRows.push({ port: rackRows.length + 1, top: '', bottom: '', color: '#ffffff' }); $('rackPortCount').value = rackRows.length; renderAll(); });
 $('renumberPorts').addEventListener('click', () => { switchRows.forEach((r, i) => r.port = i + 1); renderAll(); });
 $('renumberRack').addEventListener('click', () => { rackRows.forEach((r, i) => r.port = i + 1); renderAll(); });
-$('exportSwitchCsv').addEventListener('click', () => download('switch-labels.csv', toCsv(switchRows, ['port','vlan','label','mode','color'])));
+$('exportSwitchCsv').addEventListener('click', () => download('switch-labels.csv', toCsv(switchRows, ['port','untagged','tagged','label','color'])));
 $('exportRackCsv').addEventListener('click', () => download('rack-labels.csv', toCsv(rackRows, ['port','top','bottom','color'])));
 $('importSwitchCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'switch'));
 $('importRackCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'rack'));

@@ -42,7 +42,9 @@ td input, td select { padding: 5px; border-radius: 6px; }
 .port-box { border: .25mm solid #222; min-width: 0; display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
 .port-head { display: flex; justify-content: space-between; gap: 1mm; padding: .8mm 1mm; color: #111; font-weight: 800; font-size: 7pt; border-bottom: .2mm solid rgba(0,0,0,.45); }
 .port-label { display: flex; align-items: center; justify-content: center; text-align: center; padding: .8mm; font-weight: 800; font-size: 7pt; line-height: 1.05; }
-.port-mode { text-align: center; font-size: 5.8pt; padding: .5mm; border-top: .2mm solid rgba(0,0,0,.25); background: rgba(255,255,255,.55); }
+.port-vlans { display: flex; flex-wrap: wrap; justify-content: center; gap: .4mm; padding: .5mm; border-top: .2mm solid rgba(0,0,0,.25); background: rgba(255,255,255,.55); }
+.vlan-pill { font-size: 5.2pt; font-weight: 800; line-height: 1; padding: .35mm .6mm; border: .15mm solid rgba(0,0,0,.35); border-radius: 1mm; background: rgba(255,255,255,.65); }
+.vlan-pill.tagged { background: rgba(255,255,255,.35); }
 .legend { display: flex; flex-wrap: wrap; gap: 2mm 4mm; margin-top: 3mm; font-size: 7pt; }
 .legend-item { display: inline-flex; align-items: center; gap: 1mm; }
 .swatch { width: 4mm; height: 4mm; border: .2mm solid #111; display: inline-block; }
