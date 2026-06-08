@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VLAN & Rack Label Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div>
+      <h1>VLAN & Rack Label Generator</h1>
+      <p>Lokale Web-App für Switch-Port-Legenden und Ethercon-/Rack-Blenden-Beschriftung.</p>
+    </div>
+    <div class="header-actions">
+      <button id="printBtn" class="primary">Drucken / PDF exportieren</button>
+      <button id="resetBtn">Beispieldaten laden</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="controls no-print">
+      <div class="tabs">
+        <button class="tab active" data-view="switch">Switch-Legende</button>
+        <button class="tab" data-view="rack">Rack-Blende</button>
+      </div>
+
+      <div id="switchControls" class="panel active">
+        <div class="grid-form">
+          <label>Switch-Name <input id="switchName" value="SW-01 Bühne" /></label>
+          <label>Ports <input id="switchPortCount" type="number" min="1" max="48" value="16" /></label>
+          <label>Ports pro Reihe <input id="switchPortsPerRow" type="number" min="1" max="24" value="8" /></label>
+          <label>Breite (mm) <input id="switchWidth" type="number" min="50" max="400" value="180" /></label>
+          <label>Port-Höhe (mm) <input id="switchPortHeight" type="number" min="6" max="30" value="16" /></label>
+        </div>
+        <div class="actions-row">
+          <button id="addSwitchRow">Zeile hinzufügen</button>
+          <button id="renumberPorts">Ports durchnummerieren</button>
+          <button id="exportSwitchCsv">CSV exportieren</button>
+          <label class="file-button">CSV importieren <input id="importSwitchCsv" type="file" accept=".csv,text/csv" /></label>
+        </div>
+        <div class="hint">CSV-Spalten: port,vlan,label,mode,color</div>
+        <div class="table-wrap"><table id="switchTable"></table></div>
+      </div>
+
+      <div id="rackControls" class="panel">
+        <div class="grid-form">
+          <label>Panel-Name <input id="rackName" value="Rackblende A" /></label>
+          <label>Buchsen <input id="rackPortCount" type="number" min="1" max="48" value="12" /></label>
+          <label>Breite (mm) <input id="rackWidth" type="number" min="50" max="483" value="430" /></label>
+          <label>Streifen-Höhe (mm) <input id="rackHeight" type="number" min="5" max="60" value="18" /></label>
+          <label>Textgröße (pt) <input id="rackFontSize" type="number" min="4" max="24" value="8" /></label>
+        </div>
+        <div class="actions-row">
+          <button id="addRackRow">Zeile hinzufügen</button>
+          <button id="renumberRack">Buchsen durchnummerieren</button>
+          <button id="exportRackCsv">CSV exportieren</button>
+          <label class="file-button">CSV importieren <input id="importRackCsv" type="file" accept=".csv,text/csv" /></label>
+        </div>
+        <div class="hint">CSV-Spalten: port,top,bottom,color</div>
+        <div class="table-wrap"><table id="rackTable"></table></div>
+      </div>
+    </section>
+
+    <section class="preview">
+      <div class="paper">
+        <div id="switchPreview" class="preview-page active"></div>
+        <div id="rackPreview" class="preview-page"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
