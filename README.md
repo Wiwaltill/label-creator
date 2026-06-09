@@ -1,27 +1,24 @@
-# VLAN & Rack Label Generator v3
+# VLAN & Rack Label Generator
 
-Statische Web-App ohne Server. `index.html` im Browser öffnen.
+Statische Webanwendung zum lokalen Öffnen im Browser. Keine Installation, kein Server.
 
-## Neu in v3
+## Nutzung
 
-- Switch-Ports direkt in der Vorschau bearbeiten
-- Untagged/PVID als Dropdown
-- Tagged VLANs als Mehrfachauswahl-Dropdown
-- VLAN-Liste frei konfigurierbar, z. B. `10,20,30,40`
-- Port 1 kann per Button direkt auf `Untagged VLAN 10` + `Tagged VLAN 20` gesetzt werden
-- Rack-/Ethercon-Beschriftung ebenfalls direkt in der Vorschau editierbar
+1. ZIP entpacken.
+2. `index.html` im Browser öffnen.
+3. Switch oder Rack-Blende auswählen.
+4. Direkt in den Port-/Rack-Feldern beschriften.
+5. Über **Drucken / PDF** drucken oder als PDF speichern.
 
-## Drucken
+## Switch-Ports
 
-Über **Drucken / PDF exportieren** öffnen. Im Druckdialog Skalierung auf **100% / tatsächliche Größe** stellen.
+- **Untagged/PVID**: genau ein VLAN pro Port per Dropdown.
+- **Tagged VLANs**: mehrere VLANs per Mehrfachauswahl. Dafür Strg/Cmd oder Shift gedrückt halten.
+- Die VLAN-Liste kannst du oben als kommagetrennte Liste pflegen, z. B. `10,20,30,40,80`.
+- Beispielbutton: Port 1 auf `Untagged 10` und `Tagged 20` setzen.
 
 ## CSV
 
-Switch-CSV: `port,untagged,tagged,label,color`
+Switch CSV-Spalten: `port,untagged,tagged,label,color`
 
-Rack-CSV: `port,top,bottom,color`
-
-
-## v4 Fehlerkorrektur
-
-Die JavaScript-Datei verwendet nun keine neueren Operatoren wie `||=`, `??` oder `replaceAll` mehr. Dadurch funktioniert die App auch in älteren Browsern zuverlässiger. Außerdem bleiben die direkten Port- und Rack-Editoren auf dem Bildschirm sichtbar und nur beim Drucken werden die kompakten Druckansichten verwendet.
+Rack CSV-Spalten: `port,top,bottom,color`
