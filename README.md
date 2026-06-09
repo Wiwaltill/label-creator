@@ -20,3 +20,8 @@ Statische Web-App ohne Server. `index.html` im Browser öffnen.
 Switch-CSV: `port,untagged,tagged,label,color`
 
 Rack-CSV: `port,top,bottom,color`
+
+
+## v4 Fehlerkorrektur
+
+Die JavaScript-Datei verwendet nun keine neueren Operatoren wie `||=`, `??` oder `replaceAll` mehr. Dadurch funktioniert die App auch in älteren Browsern zuverlässiger. Außerdem bleiben die direkten Port- und Rack-Editoren auf dem Bildschirm sichtbar und nur beim Drucken werden die kompakten Druckansichten verwendet.

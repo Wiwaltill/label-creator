@@ -27,7 +27,7 @@ let rackRows = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  return String(value != null ? value : '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
 function getVlanChoices() {
@@ -44,9 +44,9 @@ function normalizeSwitchRow(row) {
   }
   return {
     port: Number(row.port) || '',
-    untagged: row.untagged ?? '',
-    tagged: row.tagged ?? '',
-    label: row.label ?? '',
+    untagged: row.untagged != null ? row.untagged : '',
+    tagged: row.tagged != null ? row.tagged : '',
+    label: row.label != null ? row.label : '',
     color: row.color || '#ffffff'
   };
 }
@@ -187,7 +187,7 @@ function setView(view) {
 }
 
 function toCsv(rows, keys) {
-  const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
+  const esc = v => `"${String(v != null ? v : '').replace(/"/g, '""')}"`;
   return [keys.join(','), ...rows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n');
 }
 function download(name, text) {
@@ -211,7 +211,7 @@ function parseCsv(text) {
       else cur += ch;
     }
     cells.push(cur);
-    return Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? '']));
+    return Object.fromEntries(headers.map((h, i) => [h, cells[i] != null ? cells[i] : '']));
   });
 }
 function importCsv(file, target) {
@@ -237,7 +237,7 @@ bindInputs(['switchName', 'switchPortCount', 'switchPortsPerRow', 'switchWidth',
 $('printBtn').addEventListener('click', () => window.print());
 $('renumberPorts').addEventListener('click', () => { switchRows.forEach((r, i) => r.port = i + 1); renderAll(); });
 $('renumberRack').addEventListener('click', () => { rackRows.forEach((r, i) => r.port = i + 1); renderAll(); });
-$('applyPort1Default').addEventListener('click', () => { if (!switchRows[0]) return; switchRows[0].untagged = '10'; switchRows[0].tagged = '20'; switchRows[0].label ||= 'Uplink / Trunk'; renderAll(); });
+$('applyPort1Default').addEventListener('click', () => { if (!switchRows[0]) return; switchRows[0].untagged = '10'; switchRows[0].tagged = '20'; if (!switchRows[0].label) switchRows[0].label = 'Uplink / Trunk'; renderAll(); });
 $('exportSwitchCsv').addEventListener('click', () => download('switch-labels.csv', toCsv(switchRows, ['port','untagged','tagged','label','color'])));
 $('exportRackCsv').addEventListener('click', () => download('rack-labels.csv', toCsv(rackRows, ['port','top','bottom','color'])));
 $('importSwitchCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'switch'));
