@@ -1,70 +1,63 @@
 # VLAN Label Generator
 
-Kleine, lokal laufende Webanwendung zur Erstellung von Port- und Rack-Beschriftungen für Netzwerk- und Veranstaltungstechnik.
+Lokale Webanwendung zur Erstellung von Switch-Port-Legenden und Rack-/Ethercon-Beschriftungen.
 
-## Funktionen
+## Start
 
-### Switch-Port-Beschriftung
+1. ZIP entpacken
+2. `index.html` im Browser öffnen
+3. VLANs anlegen, Ports anklicken und zuweisen
+4. Über **Drucken / PDF** ausgeben
 
-* Visualisierung eines 16-Port-Switches
-* Direkte Bearbeitung durch Klick auf einen Port
-* VLAN-Zuweisung pro Port
-* Unterstützung für:
+Die Anwendung läuft vollständig lokal. Es wird kein Server und keine Internetverbindung benötigt.
 
-  * Untagged VLAN (PVID)
-  * Mehrere Tagged VLANs
-* Farbliche Kennzeichnung von VLANs
-* Druckoptimierte Darstellung für Aufkleber oder Legenden
+## Wichtige Funktionen
 
-### Rack- und Ethercon-Beschriftung
+- Zentrale VLAN-Verwaltung mit ID, Name und Farbe
+- Port-Bearbeitung direkt am visualisierten Switch
+- Untagged/PVID als Auswahlfeld
+- Tagged VLANs als Mehrfachauswahl
+- Port übernimmt automatisch den Namen und die Farbe des Untagged-VLANs
+- Portname kann optional überschrieben werden
+- Definierte Farbpalette statt Betriebssystem-Farbdialog
+- Speicherung mehrerer Switche im Browser per Local Storage
+- JSON-Import und JSON-Export für Backup oder Weitergabe
+- Rack-/Ethercon-Beschriftungsstreifen mit editierbaren Feldern
+- Druckoptimierung inklusive Farbdruck über `print-color-adjust`
 
-* Erstellung von Beschriftungsstreifen für Rack-Blenden
-* Freie Benennung der Anschlüsse
-* Geeignet für Ethercon-, Netzwerk-, Audio- oder DMX-Panels
-* Ausdruck als Papierstreifen oder Etikett
-
-## Typische Anwendungsfälle
-
-### Access-Port
-
-Port 2:
-
-* Untagged: VLAN 10
-* Tagged: keine
-
-Anzeige:
-U:10
-
-### Trunk-Port
+## Beispiel
 
 Port 1:
 
-* Untagged: VLAN 10
-* Tagged: VLAN 20, VLAN 30
+- Untagged/PVID: VLAN 10 Management
+- Tagged: VLAN 20 Clients
 
-Anzeige:
+Anzeige im Port:
+
+```text
+Management
 U:10
-T:20,30
+T:20
+```
 
-## Bedienung
+## Speichern
 
-1. `index.html` im Browser öffnen
-2. VLANs definieren
-3. Gewünschten Port anklicken
-4. Untagged VLAN auswählen
-5. Tagged VLANs auswählen
-6. Beschriftungen prüfen
-7. Über die Druckfunktion des Browsers als PDF exportieren oder direkt ausdrucken
+Über **Speichern** wird der aktuelle Switch unter dem eingetragenen Namen im Browser gespeichert. Die Daten bleiben auf demselben Gerät und im selben Browser erhalten.
+
+Für ein zusätzliches Backup kann die Konfiguration als JSON exportiert und später wieder importiert werden.
 
 ## Druckhinweise
 
-Für saubere Ausdrucke:
+Für korrekte Farben im Ausdruck:
 
-* Browser-Zoom auf 100 %
-* Druckmaßstab auf „Tatsächliche Größe“
-* Kopf- und Fußzeilen deaktivieren
-* PDF-Ausgabe vor dem ersten Ausdruck prüfen
+- Im Browserdruckdialog „Hintergrundgrafiken“ bzw. „Background graphics“ aktivieren
+- Maßstab auf 100 % oder „Tatsächliche Größe“ stellen
+- Kopf- und Fußzeilen deaktivieren
+- Vor dem ersten Ausdruck als PDF prüfen
 
-## Ziel
+## Dateien
 
-Schnelle und saubere Dokumentation von VLAN-Zuweisungen und Rack-Anschlüssen ohne externe Software oder Cloud-Dienste.
+- `index.html` – Oberfläche
+- `styles.css` – Layout und Druckdarstellung
+- `app.js` – Logik, Speicherung, Import/Export
+- `README.md` – diese Dokumentation
