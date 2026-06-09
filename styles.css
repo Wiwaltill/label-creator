@@ -64,3 +64,19 @@ td input, td select { padding: 5px; border-radius: 6px; }
   .preview-page:not(.active) { display: none !important; }
   @page { size: A4; margin: 12mm; }
 }
+
+/* v3: direkte Bearbeitung in der Vorschau */
+.port-box { position: relative; }
+.port-editor { display: grid; gap: .8mm; padding: .8mm; }
+.port-editor input, .port-editor select { width: 100%; min-width: 0; padding: 2px 4px; border-radius: 4px; border: .2mm solid rgba(0,0,0,.35); font-size: 8px; background: rgba(255,255,255,.9); }
+.port-editor select[multiple] { height: 30px; }
+.port-editor label { display: grid; gap: 1px; color: #111; font-size: 7px; font-weight: 800; }
+.port-print { display: none; }
+.port-color { position: absolute; right: 1mm; top: 1mm; width: 7mm !important; height: 5mm !important; padding: 0 !important; border: .15mm solid #222 !important; }
+.rack-editor { display: grid; grid-template-rows: 1fr 1fr; gap: .5mm; padding: .7mm; width: 100%; }
+.rack-editor input { width: 100%; min-width: 0; padding: 1px 3px; border: .15mm solid rgba(0,0,0,.35); border-radius: 3px; font-size: 9px; text-align: center; }
+.rack-color { height: 5mm !important; padding: 0 !important; }
+@media print {
+  .port-editor, .rack-editor, .port-color, .rack-color { display: none !important; }
+  .port-print { display: contents; }
+}

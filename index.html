@@ -10,7 +10,7 @@
   <header class="app-header no-print">
     <div>
       <h1>VLAN & Rack Label Generator</h1>
-      <p>Lokale Web-App für Switch-Port-Legenden und Ethercon-/Rack-Blenden-Beschriftung.</p>
+      <p>Direkte Port-Beschriftung mit Untagged-/Tagged-VLAN Dropdowns und druckfertiger Ausgabe.</p>
     </div>
     <div class="header-actions">
       <button id="printBtn" class="primary">Drucken / PDF exportieren</button>
@@ -31,16 +31,16 @@
           <label>Ports <input id="switchPortCount" type="number" min="1" max="48" value="16" /></label>
           <label>Ports pro Reihe <input id="switchPortsPerRow" type="number" min="1" max="24" value="8" /></label>
           <label>Breite (mm) <input id="switchWidth" type="number" min="50" max="400" value="180" /></label>
-          <label>Port-Höhe (mm) <input id="switchPortHeight" type="number" min="6" max="30" value="16" /></label>
+          <label>Port-Höhe (mm) <input id="switchPortHeight" type="number" min="14" max="45" value="28" /></label>
+          <label>VLAN-Dropdown-Liste <input id="vlanChoices" value="10,20,30,40,50,60,80" /></label>
         </div>
         <div class="actions-row">
-          <button id="addSwitchRow">Zeile hinzufügen</button>
+          <button id="applyPort1Default">Port 1: U10 + T20 setzen</button>
           <button id="renumberPorts">Ports durchnummerieren</button>
           <button id="exportSwitchCsv">CSV exportieren</button>
           <label class="file-button">CSV importieren <input id="importSwitchCsv" type="file" accept=".csv,text/csv" /></label>
         </div>
-        <div class="hint">CSV-Spalten: port,untagged,tagged,label,color &nbsp;·&nbsp; Beispiel: Port 1 → untagged=10, tagged=20</div>
-        <div class="table-wrap"><table id="switchTable"></table></div>
+        <div class="hint">Direkt im Port bearbeiten: Label tippen, Untagged/PVID auswählen, Tagged-VLANs per Mehrfachauswahl setzen. Mehrfachauswahl: Strg/Cmd oder Shift gedrückt halten.</div>
       </div>
 
       <div id="rackControls" class="panel">
@@ -52,13 +52,11 @@
           <label>Textgröße (pt) <input id="rackFontSize" type="number" min="4" max="24" value="8" /></label>
         </div>
         <div class="actions-row">
-          <button id="addRackRow">Zeile hinzufügen</button>
           <button id="renumberRack">Buchsen durchnummerieren</button>
           <button id="exportRackCsv">CSV exportieren</button>
           <label class="file-button">CSV importieren <input id="importRackCsv" type="file" accept=".csv,text/csv" /></label>
         </div>
-        <div class="hint">CSV-Spalten: port,top,bottom,color</div>
-        <div class="table-wrap"><table id="rackTable"></table></div>
+        <div class="hint">Auch Rack-Zellen sind direkt in der Vorschau editierbar.</div>
       </div>
     </section>
 

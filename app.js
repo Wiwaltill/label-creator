@@ -30,16 +30,17 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
 }
 
-function bindInputs(ids) {
-  ids.forEach(id => $(id).addEventListener('input', renderAll));
+function getVlanChoices() {
+  const configured = $('vlanChoices').value.split(/[;,\s]+/).map(v => v.trim()).filter(Boolean);
+  const used = switchRows.flatMap(r => [r.untagged, ...String(r.tagged || '').split(/[;,\s]+/)]).map(v => String(v).trim()).filter(Boolean);
+  return [...new Set([...configured, ...used])].sort((a, b) => Number(a) - Number(b));
 }
 
 function normalizeSwitchRow(row) {
-  // Backwards compatibility for old CSVs: vlan+mode becomes untagged/tagged.
-  if (row.untagged === undefined && row.tagged === undefined) {
+  if (row.vlan && !row.untagged && !row.tagged) {
     const mode = String(row.mode || '').toLowerCase();
-    row.untagged = mode.includes('tag') && !mode.includes('untag') ? '' : (row.vlan || '');
-    row.tagged = mode.includes('tag') && !mode.includes('untag') ? (row.vlan || '') : '';
+    row.untagged = mode.includes('untag') ? row.vlan : '';
+    row.tagged = mode.includes('tag') && !mode.includes('untag') ? row.vlan : '';
   }
   return {
     port: Number(row.port) || '',
@@ -48,58 +49,6 @@ function normalizeSwitchRow(row) {
     label: row.label ?? '',
     color: row.color || '#ffffff'
   };
-}
-
-function renderSwitchTable() {
-  const table = $('switchTable');
-  table.innerHTML = `<thead><tr><th>Port</th><th>Untagged / PVID</th><th>Tagged VLANs</th><th>Label</th><th>Farbe</th><th></th></tr></thead><tbody></tbody>`;
-  const tbody = table.querySelector('tbody');
-  switchRows.forEach((row, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="number" value="${escapeHtml(row.port)}" data-i="${idx}" data-k="port"></td>
-      <td><input placeholder="z. B. 10" value="${escapeHtml(row.untagged)}" data-i="${idx}" data-k="untagged"></td>
-      <td><input placeholder="z. B. 20,30" value="${escapeHtml(row.tagged)}" data-i="${idx}" data-k="tagged"></td>
-      <td><input value="${escapeHtml(row.label)}" data-i="${idx}" data-k="label"></td>
-      <td><input type="color" value="${escapeHtml(row.color)}" data-i="${idx}" data-k="color"></td>
-      <td><button class="remove" data-remove-switch="${idx}">×</button></td>`;
-    tbody.appendChild(tr);
-  });
-  table.querySelectorAll('input').forEach(input => input.addEventListener('input', onTableInput));
-  table.querySelectorAll('[data-remove-switch]').forEach(btn => btn.addEventListener('click', () => {
-    switchRows.splice(Number(btn.dataset.removeSwitch), 1);
-    renderAll();
-  }));
-}
-
-function renderRackTable() {
-  const table = $('rackTable');
-  table.innerHTML = `<thead><tr><th>Nr.</th><th>Oben</th><th>Unten</th><th>Farbe</th><th></th></tr></thead><tbody></tbody>`;
-  const tbody = table.querySelector('tbody');
-  rackRows.forEach((row, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="number" value="${escapeHtml(row.port)}" data-rack-i="${idx}" data-k="port"></td>
-      <td><input value="${escapeHtml(row.top)}" data-rack-i="${idx}" data-k="top"></td>
-      <td><input value="${escapeHtml(row.bottom)}" data-rack-i="${idx}" data-k="bottom"></td>
-      <td><input type="color" value="${escapeHtml(row.color)}" data-rack-i="${idx}" data-k="color"></td>
-      <td><button class="remove" data-remove-rack="${idx}">×</button></td>`;
-    tbody.appendChild(tr);
-  });
-  table.querySelectorAll('input').forEach(input => input.addEventListener('input', onTableInput));
-  table.querySelectorAll('[data-remove-rack]').forEach(btn => btn.addEventListener('click', () => {
-    rackRows.splice(Number(btn.dataset.removeRack), 1);
-    renderAll();
-  }));
-}
-
-function onTableInput(e) {
-  const target = e.target;
-  const key = target.dataset.k;
-  const value = target.type === 'number' ? Number(target.value) : target.value;
-  if (target.dataset.i !== undefined) switchRows[Number(target.dataset.i)][key] = value;
-  if (target.dataset.rackI !== undefined) rackRows[Number(target.dataset.rackI)][key] = value;
-  renderPreviews();
 }
 
 function syncCounts() {
@@ -119,6 +68,16 @@ function portSummary(r) {
   return parts.join('  ');
 }
 
+function optionList(selected = '', includeEmpty = true) {
+  const choices = getVlanChoices();
+  return `${includeEmpty ? '<option value="">—</option>' : ''}${choices.map(v => `<option value="${escapeHtml(v)}" ${String(selected) === String(v) ? 'selected' : ''}>VLAN ${escapeHtml(v)}</option>`).join('')}`;
+}
+
+function multiOptionList(selectedCsv = '') {
+  const selected = new Set(String(selectedCsv || '').split(/[;,\s]+/).map(v => v.trim()).filter(Boolean));
+  return getVlanChoices().map(v => `<option value="${escapeHtml(v)}" ${selected.has(String(v)) ? 'selected' : ''}>Tagged VLAN ${escapeHtml(v)}</option>`).join('');
+}
+
 function renderSwitchPreview() {
   const width = Number($('switchWidth').value);
   const portHeight = Number($('switchPortHeight').value);
@@ -132,13 +91,26 @@ function renderSwitchPreview() {
     <div class="preview-title">${escapeHtml($('switchName').value)}</div>
     <div class="switch-label" style="width:${width}mm">
       <div class="switch-grid" style="grid-template-columns: repeat(${perRow}, 1fr)">
-        ${switchRows.map(r => `
-          <div class="port-box" style="height:${portHeight}mm;background:${escapeHtml(r.color)}">
-            <div class="port-head"><span>${escapeHtml(r.port)}</span><span>${escapeHtml(portSummary(r))}</span></div>
-            <div class="port-label">${escapeHtml(r.label)}</div>
-            <div class="port-vlans">
-              ${r.untagged ? `<span class="vlan-pill">Untagged ${escapeHtml(r.untagged)}</span>` : ''}
-              ${r.tagged ? `<span class="vlan-pill tagged">Tagged ${escapeHtml(r.tagged)}</span>` : ''}
+        ${switchRows.map((r, i) => `
+          <div class="port-box" style="min-height:${portHeight}mm;background:${escapeHtml(r.color)}" data-port-index="${i}">
+            <input class="port-color no-print" type="color" value="${escapeHtml(r.color)}" data-i="${i}" data-k="color" title="Port-Farbe">
+            <div class="port-editor no-print">
+              <strong>Port ${escapeHtml(r.port)}</strong>
+              <input value="${escapeHtml(r.label)}" data-i="${i}" data-k="label" placeholder="Label">
+              <label>Untagged/PVID
+                <select data-i="${i}" data-k="untagged">${optionList(r.untagged, true)}</select>
+              </label>
+              <label>Tagged
+                <select multiple data-i="${i}" data-k="taggedMulti">${multiOptionList(r.tagged)}</select>
+              </label>
+            </div>
+            <div class="port-print">
+              <div class="port-head"><span>${escapeHtml(r.port)}</span><span>${escapeHtml(portSummary(r))}</span></div>
+              <div class="port-label">${escapeHtml(r.label)}</div>
+              <div class="port-vlans">
+                ${r.untagged ? `<span class="vlan-pill">Untagged ${escapeHtml(r.untagged)}</span>` : ''}
+                ${r.tagged ? `<span class="vlan-pill tagged">Tagged ${escapeHtml(r.tagged)}</span>` : ''}
+              </div>
             </div>
           </div>`).join('')}
       </div>
@@ -149,6 +121,7 @@ function renderSwitchPreview() {
       </div>
     </div>
     <div class="cut-hint">Maßhaltig drucken: Im Druckdialog Skalierung auf 100% / tatsächliche Größe stellen.</div>`;
+  bindDirectSwitchEditors();
 }
 
 function renderRackPreview() {
@@ -157,18 +130,53 @@ function renderRackPreview() {
   const fontSize = Number($('rackFontSize').value);
   $('rackPreview').innerHTML = `
     <div class="preview-title">${escapeHtml($('rackName').value)}</div>
-    <div class="rack-strip" style="width:${width}mm;height:${height}mm;grid-template-columns:repeat(${rackRows.length},1fr);font-size:${fontSize}pt">
-      ${rackRows.map(r => `
+    <div class="rack-strip" style="width:${width}mm;min-height:${height}mm;grid-template-columns:repeat(${rackRows.length},1fr);font-size:${fontSize}pt">
+      ${rackRows.map((r, i) => `
         <div class="rack-cell" style="background:${escapeHtml(r.color)}">
-          <div class="rack-top">${escapeHtml(r.top || r.port)}</div>
-          <div class="rack-bottom">${escapeHtml(r.bottom)}</div>
+          <div class="rack-editor no-print">
+            <input value="${escapeHtml(r.top || r.port)}" data-rack-i="${i}" data-k="top" placeholder="oben">
+            <input value="${escapeHtml(r.bottom)}" data-rack-i="${i}" data-k="bottom" placeholder="unten">
+          </div>
+          <div class="rack-top port-print">${escapeHtml(r.top || r.port)}</div>
+          <div class="rack-bottom port-print">${escapeHtml(r.bottom)}</div>
         </div>`).join('')}
     </div>
     <div class="cut-hint">Tipp: Bei Ethercon-Buchsen Streifenbreite messen und hier in mm eintragen.</div>`;
+  bindDirectRackEditors();
+}
+
+function bindDirectSwitchEditors() {
+  $('switchPreview').querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('input', onDirectSwitchInput);
+    el.addEventListener('change', onDirectSwitchInput);
+  });
+}
+function bindDirectRackEditors() {
+  $('rackPreview').querySelectorAll('input').forEach(el => el.addEventListener('input', onDirectRackInput));
+}
+function onDirectSwitchInput(e) {
+  const el = e.target;
+  const i = Number(el.dataset.i);
+  const k = el.dataset.k;
+  if (!Number.isFinite(i) || !k) return;
+  if (k === 'taggedMulti') {
+    switchRows[i].tagged = [...el.selectedOptions].map(o => o.value).join(',');
+  } else {
+    switchRows[i][k] = el.value;
+  }
+  renderSwitchPreview();
+}
+function onDirectRackInput(e) {
+  const el = e.target;
+  const i = Number(el.dataset.rackI);
+  const k = el.dataset.k;
+  if (!Number.isFinite(i) || !k) return;
+  rackRows[i][k] = el.value;
+  renderRackPreview();
 }
 
 function renderPreviews() { renderSwitchPreview(); renderRackPreview(); }
-function renderAll() { syncCounts(); renderSwitchTable(); renderRackTable(); renderPreviews(); }
+function renderAll() { syncCounts(); renderPreviews(); }
 
 function setView(view) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
@@ -193,7 +201,16 @@ function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
   const headers = lines.shift().split(',').map(h => h.trim().replace(/^"|"$/g, ''));
   return lines.map(line => {
-    const cells = line.match(/("(?:""|[^"])*"|[^,]*)/g).filter((_, i) => i % 2 === 0).map(c => c.replace(/^"|"$/g, '').replaceAll('""', '"'));
+    const cells = [];
+    let cur = '', quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+      else if (ch === '"') quoted = !quoted;
+      else if (ch === ',' && !quoted) { cells.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    cells.push(cur);
     return Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? '']));
   });
 }
@@ -213,13 +230,14 @@ function importCsv(file, target) {
   reader.readAsText(file);
 }
 
+function bindInputs(ids) { ids.forEach(id => $(id).addEventListener('input', renderAll)); }
+
 document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setView(tab.dataset.view)));
-bindInputs(['switchName', 'switchPortCount', 'switchPortsPerRow', 'switchWidth', 'switchPortHeight', 'rackName', 'rackPortCount', 'rackWidth', 'rackHeight', 'rackFontSize']);
+bindInputs(['switchName', 'switchPortCount', 'switchPortsPerRow', 'switchWidth', 'switchPortHeight', 'vlanChoices', 'rackName', 'rackPortCount', 'rackWidth', 'rackHeight', 'rackFontSize']);
 $('printBtn').addEventListener('click', () => window.print());
-$('addSwitchRow').addEventListener('click', () => { switchRows.push({ port: switchRows.length + 1, untagged: '', tagged: '', label: '', color: '#ffffff' }); $('switchPortCount').value = switchRows.length; renderAll(); });
-$('addRackRow').addEventListener('click', () => { rackRows.push({ port: rackRows.length + 1, top: '', bottom: '', color: '#ffffff' }); $('rackPortCount').value = rackRows.length; renderAll(); });
 $('renumberPorts').addEventListener('click', () => { switchRows.forEach((r, i) => r.port = i + 1); renderAll(); });
 $('renumberRack').addEventListener('click', () => { rackRows.forEach((r, i) => r.port = i + 1); renderAll(); });
+$('applyPort1Default').addEventListener('click', () => { if (!switchRows[0]) return; switchRows[0].untagged = '10'; switchRows[0].tagged = '20'; switchRows[0].label ||= 'Uplink / Trunk'; renderAll(); });
 $('exportSwitchCsv').addEventListener('click', () => download('switch-labels.csv', toCsv(switchRows, ['port','untagged','tagged','label','color'])));
 $('exportRackCsv').addEventListener('click', () => download('rack-labels.csv', toCsv(rackRows, ['port','top','bottom','color'])));
 $('importSwitchCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'switch'));
