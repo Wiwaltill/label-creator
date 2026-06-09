@@ -1,284 +1,196 @@
-(() => {
+(function () {
   'use strict';
-  const $ = (id) => document.getElementById(id);
 
-  const defaultSwitchRows = () => [
-    { port: 1, untagged: '10', tagged: '20', label: 'Uplink / Trunk', color: '#c4b5fd' },
-    { port: 2, untagged: '10', tagged: '', label: 'Mgmt', color: '#93c5fd' },
-    { port: 3, untagged: '20', tagged: '', label: 'Audio', color: '#86efac' },
-    { port: 4, untagged: '20', tagged: '', label: 'Audio', color: '#86efac' },
-    { port: 5, untagged: '30', tagged: '', label: 'Licht', color: '#fde68a' },
-    { port: 6, untagged: '30', tagged: '', label: 'Licht', color: '#fde68a' },
-    { port: 7, untagged: '40', tagged: '', label: 'Video', color: '#fca5a5' },
-    { port: 8, untagged: '10', tagged: '20,30,40', label: 'Trunk', color: '#ddd6fe' },
-    { port: 9, untagged: '10', tagged: '20,80', label: 'AP', color: '#bfdbfe' },
-    { port: 10, untagged: '50', tagged: '', label: 'Gast', color: '#a7f3d0' },
-    { port: 11, untagged: '50', tagged: '', label: 'Gast', color: '#a7f3d0' },
-    { port: 12, untagged: '60', tagged: '', label: 'Office', color: '#bfdbfe' },
-    { port: 13, untagged: '', tagged: '', label: 'Spare', color: '#e5e7eb' },
-    { port: 14, untagged: '', tagged: '', label: 'Spare', color: '#e5e7eb' },
-    { port: 15, untagged: '10', tagged: '80', label: 'AP', color: '#ddd6fe' },
-    { port: 16, untagged: '10', tagged: '80', label: 'AP', color: '#ddd6fe' }
-  ];
+  function byId(id) { return document.getElementById(id); }
 
-  const defaultRackRows = () => Array.from({ length: 12 }, (_, i) => ({
-    port: i + 1,
-    top: ['MAIN L', 'MAIN R', 'MON 1', 'MON 2', 'FOH A', 'FOH B', 'NET A', 'NET B', 'SPARE', 'SPARE', 'REC L', 'REC R'][i] || `PORT ${i + 1}`,
-    bottom: ['XLR', 'XLR', 'XLR', 'XLR', 'CAT', 'CAT', 'CAT', 'CAT', '', '', 'XLR', 'XLR'][i] || '',
-    color: '#ffffff'
-  }));
+  var switchPorts = [];
+  var rackPorts = [];
+  var activePage = 'switch';
 
-  let switchRows = defaultSwitchRows();
-  let rackRows = defaultRackRows();
-  let currentView = 'switch';
-
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c]));
+  function initialSwitchPorts() {
+    var labels = ['Uplink / Trunk','Mgmt','Audio','Audio','Licht','Licht','Video','Trunk','AP','Gast','Gast','Office','Spare','Spare','AP','AP'];
+    var untagged = ['10','10','20','20','30','30','40','10','10','50','50','60','','','10','10'];
+    var tagged = [['20'],[],[],[],[],[],[],['20','30','40'],['20','80'],[],[],[],[],[],['80'],['80']];
+    var colors = ['#c4b5fd','#93c5fd','#86efac','#86efac','#fde68a','#fde68a','#fca5a5','#ddd6fe','#bfdbfe','#a7f3d0','#a7f3d0','#bfdbfe','#e5e7eb','#e5e7eb','#ddd6fe','#ddd6fe'];
+    var arr = [];
+    for (var i = 0; i < 16; i++) arr.push({ number: i + 1, label: labels[i], untagged: untagged[i], tagged: tagged[i], color: colors[i] });
+    return arr;
   }
 
-  function splitVlans(value) {
-    return String(value || '').split(/[;,\s]+/).map(v => v.trim()).filter(Boolean);
+  function initialRackPorts() {
+    var top = ['MAIN L','MAIN R','MON 1','MON 2','FOH A','FOH B','NET A','NET B','SPARE','SPARE','REC L','REC R'];
+    var bottom = ['XLR','XLR','XLR','XLR','CAT','CAT','CAT','CAT','','','XLR','XLR'];
+    var arr = [];
+    for (var i = 0; i < 12; i++) arr.push({ top: top[i], bottom: bottom[i], color: '#ffffff' });
+    return arr;
   }
 
-  function getVlanChoices() {
-    const fromInput = splitVlans($('vlanChoices').value);
-    const fromRows = switchRows.flatMap(r => [r.untagged, ...splitVlans(r.tagged)]).filter(Boolean);
-    return [...new Set([...fromInput, ...fromRows])].sort((a, b) => {
-      const na = Number(a), nb = Number(b);
-      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function splitValues(value) {
+    return String(value || '').split(/[;,\s]+/).map(function (v) { return v.trim(); }).filter(Boolean);
+  }
+
+  function vlanOptions() {
+    var values = splitValues(byId('vlanList').value);
+    switchPorts.forEach(function (p) {
+      if (p.untagged) values.push(p.untagged);
+      (p.tagged || []).forEach(function (v) { values.push(v); });
+    });
+    var seen = {};
+    var unique = [];
+    values.forEach(function (v) { if (!seen[v]) { seen[v] = true; unique.push(v); } });
+    unique.sort(function (a, b) {
+      var na = Number(a), nb = Number(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
       return String(a).localeCompare(String(b), 'de');
     });
+    return unique;
   }
 
-  function normalizeSwitchRow(row, index = 0) {
-    return {
-      port: Number(row.port) || index + 1,
-      untagged: String(row.untagged ?? '').trim(),
-      tagged: splitVlans(row.tagged).join(','),
-      label: String(row.label ?? ''),
-      color: row.color || '#ffffff'
-    };
+  function syncSizes() {
+    var swCount = Math.max(1, Math.min(48, Number(byId('switchCount').value) || 16));
+    byId('switchCount').value = swCount;
+    while (switchPorts.length < swCount) switchPorts.push({ number: switchPorts.length + 1, label: '', untagged: '', tagged: [], color: '#ffffff' });
+    while (switchPorts.length > swCount) switchPorts.pop();
+    switchPorts.forEach(function (p, i) { p.number = i + 1; if (!Array.isArray(p.tagged)) p.tagged = splitValues(p.tagged); });
+
+    var rackCount = Math.max(1, Math.min(48, Number(byId('rackCount').value) || 12));
+    byId('rackCount').value = rackCount;
+    while (rackPorts.length < rackCount) rackPorts.push({ top: '', bottom: '', color: '#ffffff' });
+    while (rackPorts.length > rackCount) rackPorts.pop();
   }
 
-  function normalizeRackRow(row, index = 0) {
-    return {
-      port: Number(row.port) || index + 1,
-      top: String(row.top ?? ''),
-      bottom: String(row.bottom ?? ''),
-      color: row.color || '#ffffff'
-    };
-  }
-
-  function syncCounts() {
-    const swCount = Math.max(1, Math.min(48, Number($('switchPortCount').value) || 16));
-    $('switchPortCount').value = swCount;
-    while (switchRows.length < swCount) switchRows.push({ port: switchRows.length + 1, untagged: '', tagged: '', label: '', color: '#ffffff' });
-    while (switchRows.length > swCount) switchRows.pop();
-    switchRows = switchRows.map(normalizeSwitchRow);
-
-    const rackCount = Math.max(1, Math.min(48, Number($('rackPortCount').value) || 12));
-    $('rackPortCount').value = rackCount;
-    while (rackRows.length < rackCount) rackRows.push({ port: rackRows.length + 1, top: '', bottom: '', color: '#ffffff' });
-    while (rackRows.length > rackCount) rackRows.pop();
-    rackRows = rackRows.map(normalizeRackRow);
-  }
-
-  function optionList(selected = '') {
-    const opts = ['<option value="">—</option>'];
-    for (const v of getVlanChoices()) {
-      opts.push(`<option value="${escapeHtml(v)}" ${String(selected) === String(v) ? 'selected' : ''}>VLAN ${escapeHtml(v)}</option>`);
+  function fillSelect(select, selected, allowEmpty) {
+    select.innerHTML = '';
+    if (allowEmpty) {
+      var empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '—';
+      select.appendChild(empty);
     }
-    return opts.join('');
-  }
-
-  function multiOptionList(selectedCsv = '') {
-    const selected = new Set(splitVlans(selectedCsv));
-    return getVlanChoices().map(v => `<option value="${escapeHtml(v)}" ${selected.has(String(v)) ? 'selected' : ''}>VLAN ${escapeHtml(v)}</option>`).join('');
-  }
-
-  function portSummary(r) {
-    const parts = [];
-    if (r.untagged) parts.push(`U:${r.untagged}`);
-    if (r.tagged) parts.push(`T:${r.tagged}`);
-    return parts.join('  ');
-  }
-
-  function renderSwitchPreview() {
-    const width = Math.max(50, Number($('switchWidth').value) || 180);
-    const portHeight = Math.max(12, Number($('switchPortHeight').value) || 34);
-    const perRow = Math.max(1, Number($('switchPortsPerRow').value) || 8);
-    const legend = new Map();
-    switchRows.forEach(r => {
-      if (r.untagged) legend.set(`u-${r.untagged}-${r.color}`, { label: `Untagged/PVID VLAN ${r.untagged}`, color: r.color });
-      splitVlans(r.tagged).forEach(v => legend.set(`t-${v}-${r.color}`, { label: `Tagged VLAN ${v}`, color: r.color }));
-    });
-
-    $('switchPreview').innerHTML = `
-      <div class="preview-title">${escapeHtml($('switchName').value)}</div>
-      <div class="switch-label" style="width:${width}mm">
-        <div class="switch-grid" style="grid-template-columns:repeat(${perRow},1fr)">
-          ${switchRows.map((r, i) => `
-            <div class="port-box" style="min-height:${portHeight}mm;background:${escapeHtml(r.color)}">
-              <input class="port-color no-print" type="color" value="${escapeHtml(r.color)}" data-kind="switch" data-index="${i}" data-field="color" title="Port-Farbe">
-              <div class="port-editor no-print">
-                <strong>Port ${escapeHtml(r.port)}</strong>
-                <input value="${escapeHtml(r.label)}" data-kind="switch" data-index="${i}" data-field="label" placeholder="Beschriftung">
-                <label>Untagged/PVID
-                  <select data-kind="switch" data-index="${i}" data-field="untagged">${optionList(r.untagged)}</select>
-                </label>
-                <label>Tagged VLANs
-                  <select multiple data-kind="switch" data-index="${i}" data-field="tagged">${multiOptionList(r.tagged)}</select>
-                </label>
-              </div>
-              <div class="port-print">
-                <div class="port-head"><span>${escapeHtml(r.port)}</span><span>${escapeHtml(portSummary(r))}</span></div>
-                <div class="port-label">${escapeHtml(r.label)}</div>
-                <div class="port-vlans">
-                  ${r.untagged ? `<span class="vlan-pill">Untagged ${escapeHtml(r.untagged)}</span>` : ''}
-                  ${r.tagged ? `<span class="vlan-pill tagged">Tagged ${escapeHtml(r.tagged)}</span>` : ''}
-                </div>
-              </div>
-            </div>`).join('')}
-        </div>
-        <div class="legend">
-          <span class="legend-item"><strong>U</strong> = Untagged/PVID</span>
-          <span class="legend-item"><strong>T</strong> = Tagged</span>
-          ${[...legend.values()].map(x => `<span class="legend-item"><span class="swatch" style="background:${escapeHtml(x.color)}"></span>${escapeHtml(x.label)}</span>`).join('')}
-        </div>
-      </div>
-      <div class="cut-hint">Druckdialog: Skalierung 100% / tatsächliche Größe wählen.</div>`;
-  }
-
-  function renderRackPreview() {
-    const width = Math.max(50, Number($('rackWidth').value) || 430);
-    const height = Math.max(5, Number($('rackHeight').value) || 20);
-    const fontSize = Math.max(4, Number($('rackFontSize').value) || 8);
-    $('rackPreview').innerHTML = `
-      <div class="preview-title">${escapeHtml($('rackName').value)}</div>
-      <div class="rack-strip" style="width:${width}mm;min-height:${height}mm;grid-template-columns:repeat(${rackRows.length},1fr);font-size:${fontSize}pt">
-        ${rackRows.map((r, i) => `
-          <div class="rack-cell" style="background:${escapeHtml(r.color)}">
-            <div class="rack-editor no-print">
-              <input value="${escapeHtml(r.top || r.port)}" data-kind="rack" data-index="${i}" data-field="top" placeholder="oben">
-              <input value="${escapeHtml(r.bottom)}" data-kind="rack" data-index="${i}" data-field="bottom" placeholder="unten">
-              <input class="rack-color" type="color" value="${escapeHtml(r.color)}" data-kind="rack" data-index="${i}" data-field="color" title="Farbe">
-            </div>
-            <div class="port-print">
-              <div class="rack-top">${escapeHtml(r.top || r.port)}</div>
-              <div class="rack-bottom">${escapeHtml(r.bottom)}</div>
-            </div>
-          </div>`).join('')}
-      </div>
-      <div class="cut-hint">Ethercon-Streifen messen und Breite/Höhe in mm eintragen.</div>`;
-  }
-
-  function renderAll() {
-    syncCounts();
-    renderSwitchPreview();
-    renderRackPreview();
-    setView(currentView, false);
-  }
-
-  function setView(view, update = true) {
-    currentView = view;
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
-    $('switchControls').classList.toggle('active', view === 'switch');
-    $('rackControls').classList.toggle('active', view === 'rack');
-    $('switchPreview').classList.toggle('active', view === 'switch');
-    $('rackPreview').classList.toggle('active', view === 'rack');
-    if (update) renderAll();
-  }
-
-  function onPreviewInput(e) {
-    const el = e.target;
-    const { kind, index, field } = el.dataset;
-    if (!kind || field === undefined || index === undefined) return;
-    const i = Number(index);
-    if (!Number.isInteger(i)) return;
-    if (kind === 'switch' && switchRows[i]) {
-      if (field === 'tagged') switchRows[i].tagged = [...el.selectedOptions].map(o => o.value).join(',');
-      else switchRows[i][field] = el.value;
-      renderSwitchPreview();
-    }
-    if (kind === 'rack' && rackRows[i]) {
-      rackRows[i][field] = el.value;
-      renderRackPreview();
-    }
-  }
-
-  function toCsv(rows, keys) {
-    const esc = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
-    return [keys.join(','), ...rows.map(r => keys.map(k => esc(r[k])).join(','))].join('\n');
-  }
-
-  function download(name, text) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
-  }
-
-  function parseCsv(text) {
-    const lines = text.trim().split(/\r?\n/).filter(Boolean);
-    if (!lines.length) return [];
-    const parseLine = (line) => {
-      const cells = []; let cur = ''; let quoted = false;
-      for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-        else if (ch === '"') quoted = !quoted;
-        else if (ch === ',' && !quoted) { cells.push(cur); cur = ''; }
-        else cur += ch;
-      }
-      cells.push(cur);
-      return cells;
-    };
-    const headers = parseLine(lines.shift()).map(h => h.trim());
-    return lines.map(line => {
-      const cells = parseLine(line);
-      return Object.fromEntries(headers.map((h, i) => [h, cells[i] ?? '']));
+    vlanOptions().forEach(function (v) {
+      var option = document.createElement('option');
+      option.value = v;
+      option.textContent = 'VLAN ' + v;
+      if (Array.isArray(selected)) option.selected = selected.indexOf(v) !== -1;
+      else option.selected = String(selected || '') === String(v);
+      select.appendChild(option);
     });
   }
 
-  function importCsv(file, target) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const rows = parseCsv(String(reader.result || ''));
-      if (target === 'switch') {
-        switchRows = rows.map(normalizeSwitchRow);
-        $('switchPortCount').value = switchRows.length || 1;
-      } else {
-        rackRows = rows.map(normalizeRackRow);
-        $('rackPortCount').value = rackRows.length || 1;
-      }
-      renderAll();
-    };
-    reader.readAsText(file);
+  function renderSwitch() {
+    syncSizes();
+    byId('switchTitle').textContent = byId('switchName').value || 'Switch';
+    var width = Math.max(40, Number(byId('switchWidth').value) || 180);
+    var height = Math.max(14, Number(byId('portHeight').value) || 38);
+    var perRow = Math.max(1, Number(byId('portsPerRow').value) || 8);
+    byId('switchLabel').style.width = width + 'mm';
+    var grid = byId('switchGrid');
+    grid.style.gridTemplateColumns = 'repeat(' + perRow + ', 1fr)';
+    grid.innerHTML = '';
+
+    switchPorts.forEach(function (port, index) {
+      var node = byId('portTemplate').content.firstElementChild.cloneNode(true);
+      node.style.background = port.color || '#ffffff';
+      node.style.minHeight = height + 'mm';
+      node.querySelector('.port-number').textContent = 'Port ' + port.number;
+      node.querySelector('.print-port').textContent = port.number;
+      var vlanText = [];
+      if (port.untagged) vlanText.push('U:' + port.untagged);
+      if (port.tagged && port.tagged.length) vlanText.push('T:' + port.tagged.join(','));
+      node.querySelector('.print-vlan').textContent = vlanText.join('  ');
+      node.querySelector('.print-label').textContent = port.label || '';
+
+      var color = node.querySelector('.color-picker');
+      color.value = port.color || '#ffffff';
+      color.addEventListener('input', function () { port.color = color.value; node.style.background = color.value; });
+
+      var label = node.querySelector('.port-label-input');
+      label.value = port.label || '';
+      label.addEventListener('input', function () { port.label = label.value; node.querySelector('.print-label').textContent = label.value; });
+
+      var untagged = node.querySelector('.untagged-select');
+      fillSelect(untagged, port.untagged, true);
+      untagged.addEventListener('change', function () { port.untagged = untagged.value; renderSwitch(); });
+
+      var tagged = node.querySelector('.tagged-select');
+      fillSelect(tagged, port.tagged || [], false);
+      tagged.addEventListener('change', function () {
+        port.tagged = Array.prototype.slice.call(tagged.selectedOptions).map(function (o) { return o.value; });
+        renderSwitch();
+      });
+
+      grid.appendChild(node);
+    });
   }
+
+  function renderRack() {
+    syncSizes();
+    byId('rackTitle').textContent = byId('rackName').value || 'Rack-Blende';
+    var strip = byId('rackStrip');
+    strip.style.width = Math.max(40, Number(byId('rackWidth').value) || 430) + 'mm';
+    strip.style.minHeight = Math.max(8, Number(byId('rackHeight').value) || 22) + 'mm';
+    strip.style.gridTemplateColumns = 'repeat(' + rackPorts.length + ', 1fr)';
+    strip.style.fontSize = Math.max(5, Number(byId('rackFontSize').value) || 8) + 'pt';
+    strip.innerHTML = '';
+
+    rackPorts.forEach(function (port, index) {
+      var node = byId('rackTemplate').content.firstElementChild.cloneNode(true);
+      node.style.background = port.color || '#ffffff';
+      node.querySelector('.rack-top').textContent = port.top || String(index + 1);
+      node.querySelector('.rack-bottom').textContent = port.bottom || '';
+
+      var top = node.querySelector('.rack-top-input');
+      top.value = port.top || '';
+      top.addEventListener('input', function () { port.top = top.value; node.querySelector('.rack-top').textContent = top.value || String(index + 1); });
+
+      var bottom = node.querySelector('.rack-bottom-input');
+      bottom.value = port.bottom || '';
+      bottom.addEventListener('input', function () { port.bottom = bottom.value; node.querySelector('.rack-bottom').textContent = bottom.value; });
+
+      var color = node.querySelector('.rack-color-input');
+      color.value = port.color || '#ffffff';
+      color.addEventListener('input', function () { port.color = color.value; node.style.background = color.value; });
+
+      strip.appendChild(node);
+    });
+  }
+
+  function setActive(page) {
+    activePage = page;
+    byId('tabSwitch').classList.toggle('active', page === 'switch');
+    byId('tabRack').classList.toggle('active', page === 'rack');
+    byId('switchSettings').classList.toggle('active', page === 'switch');
+    byId('rackSettings').classList.toggle('active', page === 'rack');
+    byId('switchPage').classList.toggle('active', page === 'switch');
+    byId('rackPage').classList.toggle('active', page === 'rack');
+  }
+
+  function renderAll() { renderSwitch(); renderRack(); setActive(activePage); }
 
   function bind() {
-    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => setView(tab.dataset.view)));
-    ['switchName','switchPortCount','switchPortsPerRow','switchWidth','switchPortHeight','vlanChoices','rackName','rackPortCount','rackWidth','rackHeight','rackFontSize']
-      .forEach(id => $(id).addEventListener('input', renderAll));
-    $('switchPreview').addEventListener('input', onPreviewInput);
-    $('switchPreview').addEventListener('change', onPreviewInput);
-    $('rackPreview').addEventListener('input', onPreviewInput);
-    $('rackPreview').addEventListener('change', onPreviewInput);
-    $('printBtn').addEventListener('click', () => window.print());
-    $('resetBtn').addEventListener('click', () => { switchRows = defaultSwitchRows(); rackRows = defaultRackRows(); $('switchPortCount').value = 16; $('rackPortCount').value = 12; renderAll(); });
-    $('applyPort1Default').addEventListener('click', () => { switchRows[0] = { ...switchRows[0], port: 1, untagged: '10', tagged: '20', label: switchRows[0]?.label || 'Uplink / Trunk', color: switchRows[0]?.color || '#c4b5fd' }; renderAll(); });
-    $('renumberPorts').addEventListener('click', () => { switchRows.forEach((r, i) => r.port = i + 1); renderAll(); });
-    $('renumberRack').addEventListener('click', () => { rackRows.forEach((r, i) => r.port = i + 1); renderAll(); });
-    $('clearSwitch').addEventListener('click', () => { switchRows = switchRows.map((r, i) => ({ port: i + 1, untagged: '', tagged: '', label: '', color: '#ffffff' })); renderAll(); });
-    $('clearRack').addEventListener('click', () => { rackRows = rackRows.map((r, i) => ({ port: i + 1, top: '', bottom: '', color: '#ffffff' })); renderAll(); });
-    $('exportSwitchCsv').addEventListener('click', () => download('switch-labels.csv', toCsv(switchRows, ['port','untagged','tagged','label','color'])));
-    $('exportRackCsv').addEventListener('click', () => download('rack-labels.csv', toCsv(rackRows, ['port','top','bottom','color'])));
-    $('importSwitchCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'switch'));
-    $('importRackCsv').addEventListener('change', e => e.target.files[0] && importCsv(e.target.files[0], 'rack'));
+    byId('tabSwitch').addEventListener('click', function () { setActive('switch'); });
+    byId('tabRack').addEventListener('click', function () { setActive('rack'); });
+    byId('printBtn').addEventListener('click', function () { window.print(); });
+    byId('sampleBtn').addEventListener('click', function () { switchPorts = initialSwitchPorts(); rackPorts = initialRackPorts(); byId('switchCount').value = 16; byId('rackCount').value = 12; renderAll(); });
+    byId('applyPort1').addEventListener('click', function () { if (!switchPorts[0]) switchPorts[0] = { number: 1, label: '', untagged: '', tagged: [], color: '#ffffff' }; switchPorts[0].untagged = '10'; switchPorts[0].tagged = ['20']; if (!switchPorts[0].label) switchPorts[0].label = 'Uplink / Trunk'; renderSwitch(); });
+    byId('clearSwitch').addEventListener('click', function () { switchPorts = switchPorts.map(function (p, i) { return { number: i + 1, label: '', untagged: '', tagged: [], color: '#ffffff' }; }); renderSwitch(); });
+    byId('clearRack').addEventListener('click', function () { rackPorts = rackPorts.map(function () { return { top: '', bottom: '', color: '#ffffff' }; }); renderRack(); });
+
+    ['switchName','switchCount','portsPerRow','switchWidth','portHeight','vlanList','rackName','rackCount','rackWidth','rackHeight','rackFontSize'].forEach(function (id) {
+      byId(id).addEventListener('input', renderAll);
+    });
   }
 
-  window.addEventListener('DOMContentLoaded', () => { bind(); renderAll(); });
+  document.addEventListener('DOMContentLoaded', function () {
+    switchPorts = initialSwitchPorts();
+    rackPorts = initialRackPorts();
+    bind();
+    renderAll();
+  });
 })();

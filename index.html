@@ -7,69 +7,101 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="app-header no-print">
+  <header class="topbar no-print">
     <div>
       <h1>VLAN & Rack Label Generator</h1>
-      <p>Ports direkt beschriften, Untagged/PVID und Tagged VLANs per Dropdown setzen.</p>
+      <p>Direkt in Ports und Rack-Feldern beschriften. Untagged/PVID und Tagged VLANs per Dropdown.</p>
     </div>
-    <div class="header-actions">
+    <div class="top-actions">
       <button id="printBtn" class="primary">Drucken / PDF</button>
-      <button id="resetBtn">Beispieldaten</button>
+      <button id="sampleBtn">Beispieldaten laden</button>
     </div>
   </header>
 
   <main>
-    <section class="controls no-print">
+    <aside class="sidebar no-print">
       <div class="tabs">
-        <button class="tab active" data-view="switch">Switch</button>
-        <button class="tab" data-view="rack">Rack-Blende</button>
+        <button id="tabSwitch" class="active" type="button">Switch</button>
+        <button id="tabRack" type="button">Rack-Blende</button>
       </div>
 
-      <div id="switchControls" class="panel active">
-        <div class="grid-form">
-          <label>Switch-Name <input id="switchName" value="SW-01 Bühne"></label>
-          <label>Ports <input id="switchPortCount" type="number" min="1" max="48" value="16"></label>
-          <label>Ports pro Reihe <input id="switchPortsPerRow" type="number" min="1" max="24" value="8"></label>
-          <label>Breite in mm <input id="switchWidth" type="number" min="50" max="400" value="180"></label>
-          <label>Port-Höhe in mm <input id="switchPortHeight" type="number" min="12" max="55" value="34"></label>
-          <label>VLAN-Liste <input id="vlanChoices" value="10,20,30,40,50,60,80"></label>
+      <section id="switchSettings" class="settings active">
+        <h2>Switch-Einstellungen</h2>
+        <label>Switch-Name <input id="switchName" value="SW-01 Bühne"></label>
+        <label>Anzahl Ports <input id="switchCount" type="number" min="1" max="48" value="16"></label>
+        <label>Ports pro Reihe <input id="portsPerRow" type="number" min="1" max="24" value="8"></label>
+        <label>Label-Breite mm <input id="switchWidth" type="number" min="40" max="430" value="180"></label>
+        <label>Port-Höhe mm <input id="portHeight" type="number" min="14" max="70" value="38"></label>
+        <label>Verfügbare VLANs <input id="vlanList" value="10,20,30,40,50,60,80"></label>
+        <div class="button-row">
+          <button id="applyPort1" type="button">Port 1: U10 + T20</button>
+          <button id="clearSwitch" type="button">Switch leeren</button>
         </div>
-        <div class="actions-row">
-          <button id="applyPort1Default">Port 1: U10 + T20</button>
-          <button id="renumberPorts">Ports durchnummerieren</button>
-          <button id="clearSwitch">Switch leeren</button>
-          <button id="exportSwitchCsv">CSV exportieren</button>
-          <label class="file-button">CSV importieren <input id="importSwitchCsv" type="file" accept=".csv,text/csv"></label>
-        </div>
-        <p class="hint">Bearbeitung direkt in den Port-Kacheln. Tagged ist eine Mehrfachauswahl: Strg/Cmd oder Shift gedrückt halten.</p>
-      </div>
+        <p class="hint">Die Eingabe erfolgt rechts direkt in den Port-Kacheln. Tagged erlaubt Mehrfachauswahl.</p>
+      </section>
 
-      <div id="rackControls" class="panel">
-        <div class="grid-form">
-          <label>Panel-Name <input id="rackName" value="Rackblende A"></label>
-          <label>Buchsen <input id="rackPortCount" type="number" min="1" max="48" value="12"></label>
-          <label>Breite in mm <input id="rackWidth" type="number" min="50" max="483" value="430"></label>
-          <label>Streifen-Höhe in mm <input id="rackHeight" type="number" min="5" max="80" value="20"></label>
-          <label>Textgröße pt <input id="rackFontSize" type="number" min="4" max="24" value="8"></label>
+      <section id="rackSettings" class="settings">
+        <h2>Rack-Einstellungen</h2>
+        <label>Panel-Name <input id="rackName" value="Rackblende A"></label>
+        <label>Anzahl Buchsen <input id="rackCount" type="number" min="1" max="48" value="12"></label>
+        <label>Streifen-Breite mm <input id="rackWidth" type="number" min="40" max="483" value="430"></label>
+        <label>Streifen-Höhe mm <input id="rackHeight" type="number" min="8" max="80" value="22"></label>
+        <label>Textgröße pt <input id="rackFontSize" type="number" min="5" max="24" value="8"></label>
+        <div class="button-row">
+          <button id="clearRack" type="button">Rack leeren</button>
         </div>
-        <div class="actions-row">
-          <button id="renumberRack">Buchsen durchnummerieren</button>
-          <button id="clearRack">Rack leeren</button>
-          <button id="exportRackCsv">CSV exportieren</button>
-          <label class="file-button">CSV importieren <input id="importRackCsv" type="file" accept=".csv,text/csv"></label>
-        </div>
-        <p class="hint">Die Rack-Felder werden ebenfalls direkt in der Vorschau beschriftet.</p>
-      </div>
-    </section>
+        <p class="hint">Die Rack-Felder rechts direkt beschriften.</p>
+      </section>
+    </aside>
 
-    <section class="preview">
+    <section class="preview-wrap">
       <div class="paper">
-        <div id="switchPreview" class="preview-page active"></div>
-        <div id="rackPreview" class="preview-page"></div>
+        <section id="switchPage" class="page active">
+          <h2 id="switchTitle" class="print-title"></h2>
+          <div id="switchLabel" class="switch-label">
+            <div id="switchGrid" class="switch-grid"></div>
+            <div class="legend"><b>U</b> = Untagged/PVID · <b>T</b> = Tagged</div>
+          </div>
+        </section>
+
+        <section id="rackPage" class="page">
+          <h2 id="rackTitle" class="print-title"></h2>
+          <div id="rackStrip" class="rack-strip"></div>
+        </section>
       </div>
     </section>
   </main>
 
-  <script src="app.js" defer></script>
+  <template id="portTemplate">
+    <article class="port-card">
+      <input class="color-picker no-print" type="color" title="Farbe">
+      <div class="edit-area no-print">
+        <div class="port-number"></div>
+        <input class="port-label-input" placeholder="Beschriftung">
+        <label>Untagged/PVID <select class="untagged-select"></select></label>
+        <label>Tagged VLANs <select class="tagged-select" multiple></select></label>
+      </div>
+      <div class="print-area">
+        <div class="port-head"><span class="print-port"></span><span class="print-vlan"></span></div>
+        <div class="print-label"></div>
+      </div>
+    </article>
+  </template>
+
+  <template id="rackTemplate">
+    <article class="rack-cell">
+      <div class="rack-edit no-print">
+        <input class="rack-top-input" placeholder="oben">
+        <input class="rack-bottom-input" placeholder="unten">
+        <input class="rack-color-input" type="color" title="Farbe">
+      </div>
+      <div class="rack-print">
+        <div class="rack-top"></div>
+        <div class="rack-bottom"></div>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
 </body>
 </html>
